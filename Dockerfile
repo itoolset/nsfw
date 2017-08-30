@@ -1,13 +1,16 @@
-FROM ubuntu:14.04
-MAINTAINER caffe-maint@googlegroups.com
+FROM ubuntu:16.04
+LABEL maintainer caffe-maint@googlegroups.com
 
-RUN echo "deb http://mirrors.aliyun.com/ubuntu/ trusty main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ trusty-security main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ trusty-updates main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ trusty-proposed main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ trusty-backports main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ trusty main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ trusty-security main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ trusty-updates main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ trusty-proposed main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ trusty-backports main restricted universe multiverse" > /etc/apt/sources.list
+RUN echo \
+        'deb http://mirrors.aliyun.com/ubuntu/ xenial main restricted universe multiverse\n \
+        deb http://mirrors.aliyun.com/ubuntu/ xenial-updates main restricted universe multiverse\n \
+        deb http://mirrors.aliyun.com/ubuntu/ xenial-backports main restricted universe multiverse\n \
+        deb http://mirrors.aliyun.com/ubuntu/ xenial-security main restricted universe multiverse\n' \
+    > /etc/apt/sources.list
+
 RUN cat /etc/apt/sources.list
 
-RUN apt-get update
-RUN apt-get upgrade -y
-
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
         git \
@@ -26,17 +29,20 @@ RUN apt-get install -y --no-install-recommends \
         python-dev \
         python-numpy \
         python-pip \
+        python-setuptools \
         python-scipy && \
     rm -rf /var/lib/apt/lists/*
 
 ENV CAFFE_ROOT=/opt/caffe
 WORKDIR $CAFFE_ROOT
 
-# FIXME: clone a specific git tag and use ARG instead of ENV once DockerHub supports this.
-ENV CLONE_TAG=master
+# FIXME: use ARG instead of ENV once DockerHub supports this
+# https://github.com/docker/hub-feedback/issues/460
+ENV CLONE_TAG=1.0
 
 RUN git clone -b ${CLONE_TAG} --depth 1 https://github.com/BVLC/caffe.git . && \
-    for req in $(cat python/requirements.txt) pydot; do pip install $req; done && \
+    pip install --upgrade pip && \
+    cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && cd .. && \
     mkdir build && cd build && \
     cmake -DCPU_ONLY=1 .. && \
     make -j"$(nproc)"
